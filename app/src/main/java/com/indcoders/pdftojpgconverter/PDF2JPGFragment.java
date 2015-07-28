@@ -5,10 +5,13 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.Telephony;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,8 +20,19 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.nononsenseapps.filepicker.FilePickerActivity;
+import com.squareup.okhttp.FormEncodingBuilder;
+import com.squareup.okhttp.Headers;
+import com.squareup.okhttp.MediaType;
+import com.squareup.okhttp.MultipartBuilder;
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.RequestBody;
+import com.squareup.okhttp.Response;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 
 
@@ -45,6 +59,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     Button bChoose, bConvert;
     ImageView ivJPG;
     TextView tvPath;
+    File file;
 
     /**
      * Use this factory method to create a new instance of
@@ -127,6 +142,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
             case R.id.bConvert:
 
+                    new ConvertFile().execute(file);
                 break;
         }
     }
@@ -170,29 +186,65 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         startActivityForResult(i, 777);
     }
 
-    /*public boolean convertFile(File f) throws IOException {
+    public class ConvertFile extends AsyncTask<File,Void,Void>  {
 
 
-        final MediaType MEDIA_TYPE_PDF
-                    = MediaType.parse("application/pdf");
 
-             final OkHttpClient client = new OkHttpClient();
+        @Override
+        protected Void doInBackground(File... params) {
+            File f = params[0];
+            if(f!=null) {
+                /*final MediaType MEDIA_TYPE_PDF
+                        = MediaType.parse("application/pdf");
 
-                File file = new File(getActivity());
+                final OkHttpClient client = new OkHttpClient();
+
+                RequestBody req = new MultipartBuilder().type(MultipartBuilder.FORM).
+                        addPart(Headers.of("Content-Disposition", "form-data; name=\"file\""),
+                                RequestBody.create(MEDIA_TYPE_PDF, f)).
+                        addPart(Headers.of("Content-Disposition", "form-data; name=\"output\""),
+                                RequestBody.create(null, "json")).
+                        addPart(
+                                Headers.of("Content-Disposition", "form-data; name=\"res\""),
+                                RequestBody.create(null, "72")).build();
+
+
+
 
                 Request request = new Request.Builder()
-                        .url("https://api.github.com/markdown/raw")
-                        .post(RequestBody.create(MEDIA_TYPE_PDF, file))
-                        .build();
+                        .url("https://mazira-pdf-to-png1.p.mashape.com/")
 
-                Response response = client.newCall(request).execute();
-                if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+                        .post(req)
+                        .addHeader("X-Mashape-Key", "8oh7FdicbKmshlelUm03nJbdY0o1p1TbPWKjsnef32LQMaWAL6")
+                        .build();*/
 
-                System.out.println(response.body().string());
+                Response response = null;
+                try {
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Log.e("Response",e.toString());
+                }
+                if (!response.isSuccessful()) try {
+                    throw new IOException("Unexpected code " + response);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Log.e("Response",e.toString());
+                }
+
+                try {
+                    Log.e("Response",response.body().string());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Log.e("Response",e.toString());
+                }
+            }else {
+                Log.e("Error","File = null");
+            }
+            return null;
+        }
 
 
-        return false;
-    }*/
+    }
 
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
@@ -208,7 +260,13 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                         for (int i = 0; i < clip.getItemCount(); i++) {
                             Uri uri = clip.getItemAt(i).getUri();
                             // Do something with the URI
-                            tvPath.setText(uri.toString());
+                            tvPath.setText(uri.getPath());
+                            try {
+                                file = new File(new URI(uri.getPath()));
+                            } catch (URISyntaxException e) {
+                                e.printStackTrace();
+                                Log.e("File ",e.toString());
+                            }
                         }
                     }
                     // For Ice Cream Sandwich
@@ -221,6 +279,11 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                             Uri uri = Uri.parse(path);
                             // Do something with the URI
                             tvPath.setText(uri.toString());
+                            try {
+                                file = new File(new URI(uri.getPath()));
+                            } catch (URISyntaxException e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
                 }
@@ -228,7 +291,9 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
             } else {
                 Uri uri = data.getData();
                 // Do something with the URI
-                tvPath.setText(uri.toString());
+                tvPath.setText(uri.getPath());
+                Log.e("File Path",uri.getPath());
+                file = new File(uri.getPath().toString());
             }
         }
     }
