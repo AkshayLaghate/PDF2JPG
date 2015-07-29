@@ -19,6 +19,8 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.Unirest;
 import com.nononsenseapps.filepicker.FilePickerActivity;
 import com.squareup.okhttp.FormEncodingBuilder;
 import com.squareup.okhttp.Headers;
@@ -194,7 +196,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         protected Void doInBackground(File... params) {
             File f = params[0];
             if(f!=null) {
-                /*final MediaType MEDIA_TYPE_PDF
+                final MediaType MEDIA_TYPE_PDF
                         = MediaType.parse("application/pdf");
 
                 final OkHttpClient client = new OkHttpClient();
@@ -213,16 +215,16 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
                 Request request = new Request.Builder()
                         .url("https://mazira-pdf-to-png1.p.mashape.com/")
-
                         .post(req)
                         .addHeader("X-Mashape-Key", "8oh7FdicbKmshlelUm03nJbdY0o1p1TbPWKjsnef32LQMaWAL6")
-                        .build();*/
+                        .build();
 
-                Response response = null;
+               Response response = null;
                 try {
-                } catch (Exception e) {
+
+                    response = client.newCall(request).execute();
+                } catch (IOException e) {
                     e.printStackTrace();
-                    Log.e("Response",e.toString());
                 }
                 if (!response.isSuccessful()) try {
                     throw new IOException("Unexpected code " + response);
@@ -231,12 +233,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                     Log.e("Response",e.toString());
                 }
 
-                try {
-                    Log.e("Response",response.body().string());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Log.e("Response",e.toString());
-                }
+                Log.e("Response",response.body().toString());
             }else {
                 Log.e("Error","File = null");
             }
