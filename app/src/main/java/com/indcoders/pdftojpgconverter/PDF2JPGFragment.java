@@ -198,7 +198,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         //Intent i = new Intent(getActivity(), FilePickerActivity.class);
         // This works if you defined the intent filter
         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-
+        Toast.makeText(getActivity(),"Demmy",Toast.LENGTH_SHORT).show();
         // i.setType("pdf/*");
 
 
