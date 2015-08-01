@@ -2,6 +2,7 @@ package com.indcoders.pdftojpgconverter;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.ClipData;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -14,8 +15,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.support.v4.app.Fragment;
-
-
 import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -27,7 +26,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.nononsenseapps.filepicker.FilePickerActivity;
-import com.squareup.okhttp.Headers;
 import com.squareup.okhttp.MediaType;
 import com.squareup.okhttp.MultipartBuilder;
 import com.squareup.okhttp.OkHttpClient;
@@ -37,11 +35,9 @@ import com.squareup.okhttp.Response;
 
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -69,7 +65,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
     private OnFragmentInteractionListener mListener;
 
-    Button bChoose, bConvert;
+    Button bChoose, bConvert, bSave;
     ImageView ivJPG;
     TextView tvPath;
     File file;
@@ -77,6 +73,9 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
     byte[] filedata;
     Bitmap imagedata;
+
+    ProgressDialog pd;
+
     /**
      * Use this factory method to create a new instance of
      * this fragment using the provided parameters.
@@ -118,6 +117,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         bConvert = (Button) v.findViewById(R.id.bConvert);
         tvPath = (TextView) v.findViewById(R.id.tvFilePath);
         ivJPG = (ImageView) v.findViewById(R.id.ivJPG);
+        bSave = (Button) v.findViewById(R.id.bSave);
 
         bChoose.setOnClickListener(this);
         bConvert.setOnClickListener(this);
@@ -125,14 +125,16 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         bConvert.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                byte[] decodedString = Base64.decode(base64str,Base64.DEFAULT);
+                byte[] decodedString = Base64.decode(base64str, Base64.DEFAULT);
                 imagedata = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                Log.e("ByteArray",decodedString.toString());
+                Log.e("ByteArray", decodedString.toString());
                 ivJPG.setImageBitmap(imagedata);
                 return false;
             }
         });
 
+        bSave.setOnClickListener(this);
+        pd = new ProgressDialog(getActivity());
         return v;
     }
 
@@ -169,11 +171,15 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
             case R.id.bConvert:
 
-                if(Build.VERSION.SDK_INT >= 21){
+                if (Build.VERSION.SDK_INT >= 21) {
                     // create a new renderer
-                   // pdfRenderer(file);
+                    // pdfRenderer(file);
                 }
                 new ConvertFile().execute(file);
+                break;
+
+            case R.id.bSave:
+
                 break;
         }
     }
@@ -198,7 +204,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         //Intent i = new Intent(getActivity(), FilePickerActivity.class);
         // This works if you defined the intent filter
         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-        Toast.makeText(getActivity(),"Demmy",Toast.LENGTH_SHORT).show();
+        Toast.makeText(getActivity(), "Demmy", Toast.LENGTH_SHORT).show();
         // i.setType("pdf/*");
 
 
@@ -221,6 +227,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
         String jsonStr;
         Bitmap decodedByte;
+
         @Override
         protected Void doInBackground(File... params) {
             File f = params[0];
@@ -231,12 +238,24 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                 final OkHttpClient client = new OkHttpClient();
 
 
-
                 RequestBody req = new MultipartBuilder().type(MultipartBuilder.FORM).
-                        addFormDataPart("file","file.pdf",
-                                RequestBody.create(MEDIA_TYPE_PDF, f)).
-                        addFormDataPart("output","json").
-                addFormDataPart("res","72").build();
+                        addFormDataPart("file", "file.pdf", new CustomRequest(f, "application/pdf", new CustomRequest.ProgressListener() {
+                                    @Override
+                                    public void transferred(long num) {
+                                        final long num1 = num/1000;
+                                        getActivity().runOnUiThread(new Runnable() {
+
+                                            @Override
+                                            public void run() {
+                                              //Toast.makeText(getActivity(),num1+"% uploaded",Toast.LENGTH_SHORT).show();
+                                                pd.setProgress((int) num1);
+                                           }
+                                        });
+                                    }
+                                })
+                               ).
+                        addFormDataPart("output", "json").
+                        addFormDataPart("res", "120").build();
 
 
                 Request request = new Request.Builder()
@@ -253,26 +272,32 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
                 } catch (IOException e) {
                     e.printStackTrace();
-                    Log.e("Error",e.toString());
+                    Log.e("Error", e.toString());
                 }
 
-                if(jsonStr!=null){
+                if (jsonStr != null) {
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            pd.setMessage("Coverting PDF to JPG");
+                        }
+                    });
                     try {
                         JSONArray obj = new JSONArray(jsonStr);
                         base64str = obj.getString(0);
                         Log.e("Response", base64str);
 
-                        byte[] decodedString = Base64.decode(base64str,Base64.DEFAULT);
-                        Log.e("ByteArray",decodedString.toString());
+                        byte[] decodedString = Base64.decode(base64str, Base64.DEFAULT);
+                        Log.e("ByteArray", decodedString.toString());
                         decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-
+                        Log.e("Heigth:Width", decodedByte.getHeight() + ":" + decodedByte.getWidth());
                     } catch (JSONException e) {
-                        Log.e("Error",e.toString());
-                        Toast.makeText(getActivity(),e.toString(),Toast.LENGTH_SHORT).show();
+                        Log.e("Error", e.toString());
+                        Toast.makeText(getActivity(), e.toString(), Toast.LENGTH_SHORT).show();
                     }
-                }else {
+                } else {
                     Log.e("Error", "Server error");
-                    Toast.makeText(getActivity(),"Server error! , File could not be uploaded",Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), "Server error! , File could not be uploaded", Toast.LENGTH_SHORT).show();
                 }
 
             } else {
@@ -284,12 +309,19 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
+            pd.setMessage("Uploading file");
+            pd.setCancelable(false);
+            pd.setIndeterminate(false);
+            pd.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+            pd.show();
         }
 
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
+            pd.dismiss();
             ivJPG.setImageBitmap(decodedByte);
+            bSave.setVisibility(View.VISIBLE);
         }
     }
 
@@ -348,7 +380,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                     e.printStackTrace();
                 }
             }
-        }else Toast.makeText(getActivity(),"Error opening file!",Toast.LENGTH_SHORT).show();
+        } else Toast.makeText(getActivity(), "Error opening file!", Toast.LENGTH_SHORT).show();
     }
 
     private String encodeFileToBase64Binary(File fileName)
@@ -356,7 +388,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
         File file = fileName;
         byte[] bytes = loadFile(file);
-        byte[] encoded= Base64.encode(bytes,Base64.DEFAULT);
+        byte[] encoded = Base64.encode(bytes, Base64.DEFAULT);
         String encodedString = new String(encoded);
 
         return encodedString;
@@ -369,17 +401,17 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         if (length > Integer.MAX_VALUE) {
             // File is too large
         }
-        byte[] bytes = new byte[(int)length];
+        byte[] bytes = new byte[(int) length];
 
         int offset = 0;
         int numRead = 0;
         while (offset < bytes.length
-                && (numRead=is.read(bytes, offset, bytes.length-offset)) >= 0) {
+                && (numRead = is.read(bytes, offset, bytes.length - offset)) >= 0) {
             offset += numRead;
         }
 
         if (offset < bytes.length) {
-            throw new IOException("Could not completely read file "+file.getName());
+            throw new IOException("Could not completely read file " + file.getName());
         }
 
         is.close();
@@ -387,7 +419,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    public void pdfRenderer(File f){
+    public void pdfRenderer(File f) {
         PdfRenderer renderer = null;
         try {
             renderer = new PdfRenderer(ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY));
