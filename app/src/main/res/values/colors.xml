@@ -279,6 +279,6 @@
 
     <color name="primary">@color/indigo_800</color>
     <color name="primary_dark">@color/indigo_900</color>
-    <color name="accent">@color/pink_A400</color>
+    <color name="accent">@color/red_400</color>
 
 </resources>

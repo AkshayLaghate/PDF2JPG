@@ -9,14 +9,12 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.pdf.PdfRenderer;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.ParcelFileDescriptor;
 import android.support.v4.app.Fragment;
 import android.util.Base64;
 import android.util.DisplayMetrics;
@@ -25,11 +23,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.view.animation.TranslateAnimation;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.TextView;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
 import com.nononsenseapps.filepicker.FilePickerActivity;
@@ -51,7 +50,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Random;
 
 
 /**
@@ -67,9 +65,9 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
-    Button bChoose, bConvert, bSave;
-    ImageView ivJPG;
-    TextView tvPath;
+    Button bConvert;
+    ImageView ivSelectPdf;
+    EditText etpath, etFilename, etHeight, etWidth;
     File file;
     String base64str;
     byte[] filedata;
@@ -79,10 +77,13 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     Uri saveduri;
     int height, width;
     Animation anim;
+    RadioGroup rbGroup;
+    RadioButton rbJPG, rbPNG, rbBMP;
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
     private OnFragmentInteractionListener mListener;
+
 
     public PDF2JPGFragment() {
         // Required empty public constructor
@@ -143,29 +144,30 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        View v = inflater.inflate(R.layout.fragment_pdf2_jpg, container, false);
+        View v = inflater.inflate(R.layout.pdf2jpg, container, false);
 
-        bChoose = (Button) v.findViewById(R.id.bFileChooser);
+        ivSelectPdf = (ImageView) v.findViewById(R.id.ivSelectPdf);
+        etpath = (EditText) v.findViewById(R.id.etPath);
+        etFilename = (EditText) v.findViewById(R.id.etFileName);
+        etHeight = (EditText) v.findViewById(R.id.etHeight);
+        etWidth = (EditText) v.findViewById(R.id.etWidth);
         bConvert = (Button) v.findViewById(R.id.bConvert);
-        tvPath = (TextView) v.findViewById(R.id.tvFilePath);
-        ivJPG = (ImageView) v.findViewById(R.id.ivJPG);
-        bSave = (Button) v.findViewById(R.id.bSave);
+        rbGroup = (RadioGroup) v.findViewById(R.id.rbGroup);
 
-        bChoose.setOnClickListener(this);
-        bConvert.setOnClickListener(this);
-
-        bConvert.setOnLongClickListener(new View.OnLongClickListener() {
+        rbGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
-            public boolean onLongClick(View v) {
-                byte[] decodedString = Base64.decode(base64str, Base64.DEFAULT);
-                imagedata = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                Log.e("ByteArray", decodedString.toString());
-                ivJPG.setImageBitmap(imagedata);
-                return false;
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                if (checkedId != R.id.rbJPG) {
+                    Toast.makeText(getActivity(), "Only JPG can be used in Lite version!", Toast.LENGTH_SHORT).show();
+                    rbGroup.check(R.id.rbJPG);
+                }
             }
         });
 
-        bSave.setOnClickListener(this);
+        ivSelectPdf.setOnClickListener(this);
+        bConvert.setOnClickListener(this);
+
+
         pd = new ProgressDialog(getActivity());
 
         DisplayMetrics displaymetrics = new DisplayMetrics();
@@ -173,7 +175,6 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         height = displaymetrics.heightPixels;
         width = displaymetrics.widthPixels;
 
-        anim = AnimationUtils.loadAnimation(getActivity(), R.anim.anim_translate_right2left);
         return v;
     }
 
@@ -204,12 +205,9 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
-            case R.id.bFileChooser:
-                //pickFile();
-                TranslateAnimation moveLefttoRight = new TranslateAnimation(0, -((width / 2) - 150), 0, 0);
-                moveLefttoRight.setDuration(500);
-                moveLefttoRight.setFillAfter(true);
-                bChoose.startAnimation(moveLefttoRight);
+            case R.id.ivSelectPdf:
+                pickFile();
+
                 break;
 
             case R.id.bConvert:
@@ -223,9 +221,10 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
             case R.id.bSave:
 
-                saveImageToExternalStorage(imagedata);
+
 
                 break;
+
         }
     }
 
@@ -253,38 +252,11 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         startActivityForResult(i, 777);
     }
 
-    public void pickFolder() {
-        // This always works
-        //Intent i = new Intent(getActivity(), FilePickerActivity.class);
-        // This works if you defined the intent filter
-        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-        Toast.makeText(getActivity(), "Demmy", Toast.LENGTH_SHORT).show();
-        // i.setType("pdf/*");
-
-
-        // Set these depending on your use case. These are the defaults.
-        i.putExtra(FilePickerActivity.EXTRA_ALLOW_MULTIPLE, false);
-        i.putExtra(FilePickerActivity.EXTRA_ALLOW_CREATE_DIR, true);
-        i.putExtra(FilePickerActivity.EXTRA_MODE, FilePickerActivity.MODE_DIR);
-
-
-        // Configure initial directory by specifying a String.
-        // You could specify a String like "/storage/emulated/0/", but that can
-        // dangerous. Always use Android's API calls to get paths to the SD-card or
-        // internal memory.
-        i.putExtra(FilePickerActivity.EXTRA_START_PATH, Environment.getExternalStorageDirectory().getPath());
-
-        startActivityForResult(i, 777);
-    }
-
     private void saveImageToExternalStorage(Bitmap finalBitmap) {
         String root = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).toString();
         File myDir = new File(root + "/PDF2JPG");
         myDir.mkdirs();
-        Random generator = new Random();
-        int n = 10000;
-        n = generator.nextInt(n);
-        String fname = "Image-" + n + ".jpg";
+        String fname = etFilename.getText().toString() + ".jpg";
         File file = new File(myDir, fname);
         if (file.exists())
             file.delete();
@@ -354,6 +326,10 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        TranslateAnimation moveLefttoRight = new TranslateAnimation(0, -((width / 2) - 150), 0, 0);
+        moveLefttoRight.setDuration(500);
+        moveLefttoRight.setFillAfter(true);
+        ivSelectPdf.startAnimation(moveLefttoRight);
         if (requestCode == 777 && resultCode == Activity.RESULT_OK) {
             if (data.getBooleanExtra(FilePickerActivity.EXTRA_ALLOW_MULTIPLE, false)) {
                 // For JellyBean and above
@@ -364,7 +340,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                         for (int i = 0; i < clip.getItemCount(); i++) {
                             Uri uri = clip.getItemAt(i).getUri();
                             // Do something with the URI
-                            tvPath.setText(uri.getPath());
+                            etpath.setText(uri.getPath());
                             try {
                                 file = new File(new URI(uri.getPath()));
                             } catch (URISyntaxException e) {
@@ -382,7 +358,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                         for (String path : paths) {
                             Uri uri = Uri.parse(path);
                             // Do something with the URI
-                            tvPath.setText(uri.toString());
+                            etpath.setText(uri.toString());
                             try {
                                 file = new File(new URI(uri.getPath()));
                             } catch (URISyntaxException e) {
@@ -395,7 +371,8 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
             } else {
                 Uri uri = data.getData();
                 // Do something with the URI
-                tvPath.setText(uri.getPath());
+                etpath.setText(uri.getPath());
+                etpath.setVisibility(View.VISIBLE);
                 Log.e("File Path", uri.getPath());
                 file = new File(uri.getPath().toString());
 
@@ -419,33 +396,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         return encodedString;
     }
 
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    public void pdfRenderer(File f) {
-        PdfRenderer renderer = null;
-        try {
-            renderer = new PdfRenderer(ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
-        // let us just render all pages
-        final int pageCount = renderer.getPageCount();
-        for (int i = 0; i < pageCount; i++) {
-            PdfRenderer.Page page = renderer.openPage(i);
-
-            // say we render for showing on the screen
-            page.render(imagedata, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-
-            // do stuff with the bitmap
-            ivJPG.setImageBitmap(imagedata);
-
-            // close the page
-            page.close();
-        }
-
-        // close the renderer
-        renderer.close();
-    }
 
     /**
      * This interface must be implemented by activities that contain this
@@ -465,6 +416,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     public class ConvertFile extends AsyncTask<File, Void, Void> {
 
         String jsonStr;
+        boolean er = false;
 
         @Override
         protected Void doInBackground(File... params) {
@@ -480,7 +432,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                         addFormDataPart("file", "file.pdf", new CustomRequest(f, "application/pdf", new CustomRequest.ProgressListener() {
                                     @Override
                                     public void transferred(long num) {
-                                        final long num1 = num / 10000;
+                                        final long num1 = num / 1000;
                                         getActivity().runOnUiThread(new Runnable() {
 
                                             @Override
@@ -510,6 +462,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
                 } catch (IOException e) {
                     e.printStackTrace();
+                    er = true;
                     Log.e("Error", e.toString());
                 }
 
@@ -537,14 +490,15 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                         Log.e("Heigth:Width", imagedata.getHeight() + ":" + imagedata.getWidth());
                     } catch (JSONException e) {
                         Log.e("Error", e.toString());
-
+                        er = true;
                     }
                 } else {
                     Log.e("Error", "Server error");
-
+                    er = true;
                 }
 
             } else {
+                er = true;
                 Log.e("Error", "File = null");
             }
             return null;
@@ -564,8 +518,9 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
             pd.dismiss();
-            ivJPG.setImageBitmap(imagedata);
-            bSave.setVisibility(View.VISIBLE);
+            if (er = false) {
+                saveImageToExternalStorage(imagedata);
+            }
         }
     }
 }
