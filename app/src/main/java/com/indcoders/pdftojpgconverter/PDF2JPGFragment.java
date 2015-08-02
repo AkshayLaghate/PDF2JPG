@@ -2,12 +2,15 @@ package com.indcoders.pdftojpgconverter;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.ClipData;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.pdf.PdfRenderer;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -16,10 +19,14 @@ import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.support.v4.app.Fragment;
 import android.util.Base64;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.view.animation.TranslateAnimation;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -38,11 +45,13 @@ import org.json.JSONException;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Random;
 
 
 /**
@@ -58,23 +67,26 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
-
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
-
-    private OnFragmentInteractionListener mListener;
-
     Button bChoose, bConvert, bSave;
     ImageView ivJPG;
     TextView tvPath;
     File file;
     String base64str;
-
     byte[] filedata;
     Bitmap imagedata;
-
     ProgressDialog pd;
+    String savedFilePath;
+    Uri saveduri;
+    int height, width;
+    Animation anim;
+    // TODO: Rename and change types of parameters
+    private String mParam1;
+    private String mParam2;
+    private OnFragmentInteractionListener mListener;
+
+    public PDF2JPGFragment() {
+        // Required empty public constructor
+    }
 
     /**
      * Use this factory method to create a new instance of
@@ -94,8 +106,28 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         return fragment;
     }
 
-    public PDF2JPGFragment() {
-        // Required empty public constructor
+    private static byte[] loadFile(File file) throws IOException {
+        InputStream is = new FileInputStream(file);
+
+        long length = file.length();
+        if (length > Integer.MAX_VALUE) {
+            // File is too large
+        }
+        byte[] bytes = new byte[(int) length];
+
+        int offset = 0;
+        int numRead = 0;
+        while (offset < bytes.length
+                && (numRead = is.read(bytes, offset, bytes.length - offset)) >= 0) {
+            offset += numRead;
+        }
+
+        if (offset < bytes.length) {
+            throw new IOException("Could not completely read file " + file.getName());
+        }
+
+        is.close();
+        return bytes;
     }
 
     @Override
@@ -135,6 +167,13 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
         bSave.setOnClickListener(this);
         pd = new ProgressDialog(getActivity());
+
+        DisplayMetrics displaymetrics = new DisplayMetrics();
+        getActivity().getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
+        height = displaymetrics.heightPixels;
+        width = displaymetrics.widthPixels;
+
+        anim = AnimationUtils.loadAnimation(getActivity(), R.anim.anim_translate_right2left);
         return v;
     }
 
@@ -166,7 +205,11 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.bFileChooser:
-                pickFile();
+                //pickFile();
+                TranslateAnimation moveLefttoRight = new TranslateAnimation(0, -((width / 2) - 150), 0, 0);
+                moveLefttoRight.setDuration(500);
+                moveLefttoRight.setFillAfter(true);
+                bChoose.startAnimation(moveLefttoRight);
                 break;
 
             case R.id.bConvert:
@@ -180,23 +223,10 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
             case R.id.bSave:
 
+                saveImageToExternalStorage(imagedata);
+
                 break;
         }
-    }
-
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
-        public void onFragmentInteraction(Uri uri);
     }
 
     public void pickFile() {
@@ -223,108 +253,103 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         startActivityForResult(i, 777);
     }
 
-    public class ConvertFile extends AsyncTask<File, Void, Void> {
-
-        String jsonStr;
-        Bitmap decodedByte;
-
-        @Override
-        protected Void doInBackground(File... params) {
-            File f = params[0];
-            if (f != null) {
-                final MediaType MEDIA_TYPE_PDF
-                        = MediaType.parse("application/pdf");
-
-                final OkHttpClient client = new OkHttpClient();
+    public void pickFolder() {
+        // This always works
+        //Intent i = new Intent(getActivity(), FilePickerActivity.class);
+        // This works if you defined the intent filter
+        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+        Toast.makeText(getActivity(), "Demmy", Toast.LENGTH_SHORT).show();
+        // i.setType("pdf/*");
 
 
-                RequestBody req = new MultipartBuilder().type(MultipartBuilder.FORM).
-                        addFormDataPart("file", "file.pdf", new CustomRequest(f, "application/pdf", new CustomRequest.ProgressListener() {
-                                    @Override
-                                    public void transferred(long num) {
-                                        final long num1 = num/1000;
-                                        getActivity().runOnUiThread(new Runnable() {
-
-                                            @Override
-                                            public void run() {
-                                              //Toast.makeText(getActivity(),num1+"% uploaded",Toast.LENGTH_SHORT).show();
-                                                pd.setProgress((int) num1);
-                                           }
-                                        });
-                                    }
-                                })
-                               ).
-                        addFormDataPart("output", "json").
-                        addFormDataPart("res", "120").build();
+        // Set these depending on your use case. These are the defaults.
+        i.putExtra(FilePickerActivity.EXTRA_ALLOW_MULTIPLE, false);
+        i.putExtra(FilePickerActivity.EXTRA_ALLOW_CREATE_DIR, true);
+        i.putExtra(FilePickerActivity.EXTRA_MODE, FilePickerActivity.MODE_DIR);
 
 
-                Request request = new Request.Builder()
-                        .url("https://mazira-pdf-to-png1.p.mashape.com/")
-                        .post(req)
-                        .addHeader("X-Mashape-Key", "8oh7FdicbKmshlelUm03nJbdY0o1p1TbPWKjsnef32LQMaWAL6")
-                        .build();
+        // Configure initial directory by specifying a String.
+        // You could specify a String like "/storage/emulated/0/", but that can
+        // dangerous. Always use Android's API calls to get paths to the SD-card or
+        // internal memory.
+        i.putExtra(FilePickerActivity.EXTRA_START_PATH, Environment.getExternalStorageDirectory().getPath());
 
-                Response response = null;
-                try {
-
-                    response = client.newCall(request).execute();
-                    jsonStr = response.body().string();
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Log.e("Error", e.toString());
-                }
-
-                if (jsonStr != null) {
-                    getActivity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            pd.setMessage("Coverting PDF to JPG");
-                        }
-                    });
-                    try {
-                        JSONArray obj = new JSONArray(jsonStr);
-                        base64str = obj.getString(0);
-                        Log.e("Response", base64str);
-
-                        byte[] decodedString = Base64.decode(base64str, Base64.DEFAULT);
-                        Log.e("ByteArray", decodedString.toString());
-                        decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                        Log.e("Heigth:Width", decodedByte.getHeight() + ":" + decodedByte.getWidth());
-                    } catch (JSONException e) {
-                        Log.e("Error", e.toString());
-                        Toast.makeText(getActivity(), e.toString(), Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    Log.e("Error", "Server error");
-                    Toast.makeText(getActivity(), "Server error! , File could not be uploaded", Toast.LENGTH_SHORT).show();
-                }
-
-            } else {
-                Log.e("Error", "File = null");
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            pd.setMessage("Uploading file");
-            pd.setCancelable(false);
-            pd.setIndeterminate(false);
-            pd.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-            pd.show();
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
-            pd.dismiss();
-            ivJPG.setImageBitmap(decodedByte);
-            bSave.setVisibility(View.VISIBLE);
-        }
+        startActivityForResult(i, 777);
     }
 
+    private void saveImageToExternalStorage(Bitmap finalBitmap) {
+        String root = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).toString();
+        File myDir = new File(root + "/PDF2JPG");
+        myDir.mkdirs();
+        Random generator = new Random();
+        int n = 10000;
+        n = generator.nextInt(n);
+        String fname = "Image-" + n + ".jpg";
+        File file = new File(myDir, fname);
+        if (file.exists())
+            file.delete();
+        try {
+            FileOutputStream out = new FileOutputStream(file);
+            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
+            out.flush();
+            out.getFD().sync();
+            out.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        /*getActivity().sendBroadcast(new Intent(
+                Intent.ACTION_MEDIA_MOUNTED,
+                Uri.parse("file://" + Environment.getExternalStorageDirectory())));*/
+
+        // Tell the media scanner about the new file so that it is
+        // immediately available to the user.
+        MediaScannerConnection.scanFile(getActivity(), new String[]{file.toString()}, null,
+                new MediaScannerConnection.OnScanCompletedListener() {
+                    public void onScanCompleted(String path, Uri uri) {
+                        Log.i("ExternalStorage", "Scanned " + path + ":");
+                        Log.i("ExternalStorage", "-> uri=" + uri);
+
+                        savedFilePath = path;
+                        saveduri = uri;
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                showAlert(saveduri, savedFilePath);
+                            }
+                        });
+
+                    }
+                });
+
+    }
+
+    public void showAlert(Uri uri, final String path) {
+        final Uri uri1 = uri;
+        new AlertDialog.Builder(getActivity())
+                .setTitle("File Saved.")
+                .setMessage("File saved in :" + path)
+                .setPositiveButton("Open File", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        // continue with delete
+
+                        File imagefile = new File(path);
+                        Intent i = new Intent();
+                        i.setAction(Intent.ACTION_VIEW);
+                        i.setDataAndType(Uri.fromFile(imagefile), "image/jpg");
+                        startActivity(i);
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("Done", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        // do nothing
+                        dialog.dismiss();
+                    }
+                })
+                .setIcon(android.R.drawable.ic_dialog_info)
+                .show();
+    }
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
     @Override
@@ -394,30 +419,6 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         return encodedString;
     }
 
-    private static byte[] loadFile(File file) throws IOException {
-        InputStream is = new FileInputStream(file);
-
-        long length = file.length();
-        if (length > Integer.MAX_VALUE) {
-            // File is too large
-        }
-        byte[] bytes = new byte[(int) length];
-
-        int offset = 0;
-        int numRead = 0;
-        while (offset < bytes.length
-                && (numRead = is.read(bytes, offset, bytes.length - offset)) >= 0) {
-            offset += numRead;
-        }
-
-        if (offset < bytes.length) {
-            throw new IOException("Could not completely read file " + file.getName());
-        }
-
-        is.close();
-        return bytes;
-    }
-
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public void pdfRenderer(File f) {
         PdfRenderer renderer = null;
@@ -444,6 +445,128 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
         // close the renderer
         renderer.close();
+    }
+
+    /**
+     * This interface must be implemented by activities that contain this
+     * fragment to allow an interaction in this fragment to be communicated
+     * to the activity and potentially other fragments contained in that
+     * activity.
+     * <p/>
+     * See the Android Training lesson <a href=
+     * "http://developer.android.com/training/basics/fragments/communicating.html"
+     * >Communicating with Other Fragments</a> for more information.
+     */
+    public interface OnFragmentInteractionListener {
+        // TODO: Update argument type and name
+        public void onFragmentInteraction(Uri uri);
+    }
+
+    public class ConvertFile extends AsyncTask<File, Void, Void> {
+
+        String jsonStr;
+
+        @Override
+        protected Void doInBackground(File... params) {
+            File f = params[0];
+            if (f != null) {
+                final MediaType MEDIA_TYPE_PDF
+                        = MediaType.parse("application/pdf");
+
+                final OkHttpClient client = new OkHttpClient();
+
+
+                RequestBody req = new MultipartBuilder().type(MultipartBuilder.FORM).
+                        addFormDataPart("file", "file.pdf", new CustomRequest(f, "application/pdf", new CustomRequest.ProgressListener() {
+                                    @Override
+                                    public void transferred(long num) {
+                                        final long num1 = num / 10000;
+                                        getActivity().runOnUiThread(new Runnable() {
+
+                                            @Override
+                                            public void run() {
+                                                //Toast.makeText(getActivity(),num1+"% uploaded",Toast.LENGTH_SHORT).show();
+                                                pd.setProgress((int) num1);
+                                            }
+                                        });
+                                    }
+                                })
+                        ).
+                        addFormDataPart("output", "json").
+                        addFormDataPart("res", "120").build();
+
+
+                Request request = new Request.Builder()
+                        .url("https://mazira-pdf-to-png1.p.mashape.com/")
+                        .post(req)
+                        .addHeader("X-Mashape-Key", "8oh7FdicbKmshlelUm03nJbdY0o1p1TbPWKjsnef32LQMaWAL6")
+                        .build();
+
+                Response response = null;
+                try {
+
+                    response = client.newCall(request).execute();
+                    jsonStr = response.body().string();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Log.e("Error", e.toString());
+                }
+
+                if (jsonStr != null) {
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            pd.setMessage("Coverting PDF to JPG");
+                        }
+                    });
+                    try {
+                        final JSONArray obj = new JSONArray(jsonStr);
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(getActivity(), "Total Pages : " + obj.length(), Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                        base64str = obj.getString(0);
+                        Log.e("Response", base64str);
+
+                        byte[] decodedString = Base64.decode(base64str, Base64.DEFAULT);
+                        Log.e("ByteArray", decodedString.toString());
+                        imagedata = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                        Log.e("Heigth:Width", imagedata.getHeight() + ":" + imagedata.getWidth());
+                    } catch (JSONException e) {
+                        Log.e("Error", e.toString());
+
+                    }
+                } else {
+                    Log.e("Error", "Server error");
+
+                }
+
+            } else {
+                Log.e("Error", "File = null");
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            pd.setMessage("Converting file...");
+            pd.setCancelable(true);
+            pd.setIndeterminate(false);
+            pd.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+            pd.show();
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            pd.dismiss();
+            ivJPG.setImageBitmap(imagedata);
+            bSave.setVisibility(View.VISIBLE);
+        }
     }
 }
 

@@ -1,9 +1,8 @@
 
-<ScrollView
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:layout_gravity="center_horizontal"
-    xmlns:android="http://schemas.android.com/apk/res/android">
+    android:layout_gravity="center_horizontal">
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -13,38 +12,38 @@
     <!-- TODO: Update blank fragment layout -->
 
     <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Choose"
         android:id="@+id/bFileChooser"
-        android:layout_gravity="center_horizontal" />
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="Choose" />
 
     <TextView
+        android:id="@+id/tvFilePath"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_gravity="center_horizontal"
         android:text="Path"
-        android:id="@+id/tvFilePath"
-        android:layout_gravity="center_horizontal" />
+        android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <ImageView
+        android:id="@+id/ivJPG"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/ivJPG"
         android:layout_gravity="center_horizontal" />
     <Button
+        android:id="@+id/bConvert"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Convert"
-        android:id="@+id/bConvert"
-        android:layout_gravity="center_horizontal" />
+        android:layout_gravity="center_horizontal"
+        android:text="Convert" />
 
     <Button
+        android:id="@+id/bSave"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Save JPG"
-        android:id="@+id/bSave"
         android:layout_gravity="center_horizontal"
+        android:text="Save JPG"
         android:visibility="invisible" />
 </LinearLayout>
 </ScrollView>
