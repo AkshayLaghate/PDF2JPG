@@ -50,6 +50,8 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 
 
 /**
@@ -71,7 +73,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     File file;
     String base64str;
     byte[] filedata;
-    Bitmap imagedata;
+    Bitmap[] imagedata;
     ProgressDialog pd;
     String savedFilePath;
     Uri saveduri;
@@ -233,7 +235,6 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         //Intent i = new Intent(getActivity(), FilePickerActivity.class);
         // This works if you defined the intent filter
         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-        Toast.makeText(getActivity(), "Demmy", Toast.LENGTH_SHORT).show();
         // i.setType("pdf/*");
 
 
@@ -252,22 +253,25 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         startActivityForResult(i, 777);
     }
 
-    private void saveImageToExternalStorage(Bitmap finalBitmap) {
+    private void saveImageToExternalStorage(Bitmap[] finalBitmap) {
         String root = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).toString();
         File myDir = new File(root + "/PDF2JPG");
         myDir.mkdirs();
-        String fname = etFilename.getText().toString() + ".jpg";
-        File file = new File(myDir, fname);
-        if (file.exists())
-            file.delete();
-        try {
-            FileOutputStream out = new FileOutputStream(file);
-            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
-            out.flush();
-            out.getFD().sync();
-            out.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+        File file = null;
+        for (int i = 0; i < finalBitmap.length; i++) {
+            String fname = etFilename.getText().toString() + ".jpg";
+            file = new File(myDir, fname);
+            if (file.exists())
+                file.renameTo(new File(myDir, etFilename.getText().toString() + "_" + i + ".jpg"));
+            try {
+                FileOutputStream out = new FileOutputStream(file);
+                finalBitmap[i].compress(Bitmap.CompressFormat.JPEG, 90, out);
+                out.flush();
+                out.getFD().sync();
+                out.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         /*getActivity().sendBroadcast(new Intent(
@@ -311,23 +315,36 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                         i.setDataAndType(Uri.fromFile(imagefile), "image/jpg");
                         startActivity(i);
                         dialog.dismiss();
+                        reset();
                     }
                 })
                 .setNegativeButton("Done", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         // do nothing
                         dialog.dismiss();
+                        reset();
                     }
                 })
                 .setIcon(android.R.drawable.ic_dialog_info)
                 .show();
     }
 
+
+    public void reset() {
+        etFilename.setText("");
+        etpath.setText("");
+        etpath.setVisibility(View.INVISIBLE);
+        TranslateAnimation moveLefttoRight = new TranslateAnimation(-((width / 2) - 150), 0, 0, 0);
+        moveLefttoRight.setDuration(500);
+        moveLefttoRight.setFillAfter(true);
+        ivSelectPdf.startAnimation(moveLefttoRight);
+    }
+
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         TranslateAnimation moveLefttoRight = new TranslateAnimation(0, -((width / 2) - 150), 0, 0);
-        moveLefttoRight.setDuration(500);
+        moveLefttoRight.setDuration(700);
         moveLefttoRight.setFillAfter(true);
         ivSelectPdf.startAnimation(moveLefttoRight);
         if (requestCode == 777 && resultCode == Activity.RESULT_OK) {
@@ -481,13 +498,19 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                                 Toast.makeText(getActivity(), "Total Pages : " + obj.length(), Toast.LENGTH_SHORT).show();
                             }
                         });
-                        base64str = obj.getString(0);
-                        Log.e("Response", base64str);
+                        if (obj.length() > 0) {
 
-                        byte[] decodedString = Base64.decode(base64str, Base64.DEFAULT);
-                        Log.e("ByteArray", decodedString.toString());
-                        imagedata = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                        Log.e("Heigth:Width", imagedata.getHeight() + ":" + imagedata.getWidth());
+                            imagedata = new Bitmap[obj.length()];
+                            for (int i = 0; i < obj.length(); i++) {
+                                base64str = obj.getString(i);
+                                Log.e("Response", base64str);
+
+                                byte[] decodedString = Base64.decode(base64str, Base64.DEFAULT);
+                                Log.e("ByteArray", decodedString.toString());
+                                imagedata[i] = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                                Log.e("Heigth:Width", imagedata[i].getHeight() + ":" + imagedata[i].getWidth());
+                            }
+                        }
                     } catch (JSONException e) {
                         Log.e("Error", e.toString());
                         er = true;
@@ -518,8 +541,10 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
             pd.dismiss();
-            if (er = false) {
+            if (!er) {
+                Collections.reverse(Arrays.asList(imagedata));
                 saveImageToExternalStorage(imagedata);
+
             }
         }
     }

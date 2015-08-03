@@ -22,6 +22,10 @@
         <item name="homeAsUpIndicator">@drawable/ic_drawer</item>
         <item name="android:homeAsUpIndicator">@drawable/ic_drawer</item>
 
+        <item name="colorControlNormal">#c5c5c5</item>
+        <item name="colorControlActivated">@color/accent</item>
+        <item name="colorControlHighlight">@color/accent</item>
+
     </style>
 
     <style name="MyPopupStyle" parent="ThemeOverlay.AppCompat.Light">
