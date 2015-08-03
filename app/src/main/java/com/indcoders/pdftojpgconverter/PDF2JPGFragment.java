@@ -16,6 +16,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v4.app.Fragment;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
 import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -67,6 +69,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
+    final int JPG = 1, PNG = 2;
     Button bConvert;
     ImageView ivSelectPdf;
     EditText etpath, etFilename, etHeight, etWidth;
@@ -81,11 +84,11 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     Animation anim;
     RadioGroup rbGroup;
     RadioButton rbJPG, rbPNG, rbBMP;
+    int format = JPG;
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
     private OnFragmentInteractionListener mListener;
-
 
     public PDF2JPGFragment() {
         // Required empty public constructor
@@ -159,10 +162,18 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         rbGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
-                if (checkedId != R.id.rbJPG) {
+                /*if (checkedId != R.id.rbJPG) {
                     Toast.makeText(getActivity(), "Only JPG can be used in Lite version!", Toast.LENGTH_SHORT).show();
                     rbGroup.check(R.id.rbJPG);
-                }
+                }*/
+                switch (checkedId) {
+                    case R.id.rbJPG:
+                        format = JPG;
+                        break;
+                    case R.id.radioButton:
+                        format = PNG;
+                        break;
+            }
             }
         });
 
@@ -218,7 +229,9 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                     // create a new renderer
                     // pdfRenderer(file);
                 }
-                new ConvertFile().execute(file);
+                if (allGood()) {
+                    new ConvertFile().execute(file);
+                }
                 break;
 
             case R.id.bSave:
@@ -228,6 +241,45 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                 break;
 
         }
+    }
+
+    private boolean allGood() {
+        if (etFilename.getText().toString().matches("")) {
+            String estring = "Please specify a name!";
+            ForegroundColorSpan fgcspan = new ForegroundColorSpan(getResources().getColor(R.color.grey_white_1000));
+            SpannableStringBuilder ssbuilder = new SpannableStringBuilder(estring);
+            ssbuilder.setSpan(fgcspan, 0, estring.length(), 0);
+            etFilename.setError(ssbuilder);
+            return false;
+        }
+
+        if (etpath.getText().toString().matches("")) {
+            Toast.makeText(getActivity(), "Please select a pdf file first!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        if (etHeight.getText().toString().matches("")) {
+            if (!etWidth.getText().toString().matches("")) {
+                String estring = "Must give a height value";
+                ForegroundColorSpan fgcspan = new ForegroundColorSpan(getResources().getColor(R.color.grey_white_1000));
+                SpannableStringBuilder ssbuilder = new SpannableStringBuilder(estring);
+                ssbuilder.setSpan(fgcspan, 0, estring.length(), 0);
+                etHeight.setError(ssbuilder);
+                return false;
+            }
+        }
+
+        if (etWidth.getText().toString().matches("")) {
+            if (!etHeight.getText().toString().matches("")) {
+                String estring = "Must give a width value";
+                ForegroundColorSpan fgcspan = new ForegroundColorSpan(getResources().getColor(R.color.grey_white_1000));
+                SpannableStringBuilder ssbuilder = new SpannableStringBuilder(estring);
+                ssbuilder.setSpan(fgcspan, 0, estring.length(), 0);
+                etWidth.setError(ssbuilder);
+                return false;
+            }
+        }
+        return true;
     }
 
     public void pickFile() {
@@ -259,13 +311,40 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         myDir.mkdirs();
         File file = null;
         for (int i = 0; i < finalBitmap.length; i++) {
-            String fname = etFilename.getText().toString() + ".jpg";
+            String fname = null;
+            switch (format) {
+                case JPG:
+                    fname = etFilename.getText().toString() + ".jpg";
+                    break;
+                case PNG:
+                    fname = etFilename.getText().toString() + ".png";
+                    break;
+            }
+
             file = new File(myDir, fname);
             if (file.exists())
-                file.renameTo(new File(myDir, etFilename.getText().toString() + "_" + i + ".jpg"));
+                switch (format) {
+                    case JPG:
+                        file.renameTo(new File(myDir, etFilename.getText().toString() + "_" + i + ".jpg"));
+                        break;
+                    case PNG:
+                        file.renameTo(new File(myDir, etFilename.getText().toString() + "_" + i + ".png"));
+                        break;
+                }
             try {
                 FileOutputStream out = new FileOutputStream(file);
-                finalBitmap[i].compress(Bitmap.CompressFormat.JPEG, 90, out);
+                if (customRes()) {
+                    finalBitmap[i] = Bitmap.createScaledBitmap(finalBitmap[i], Integer.parseInt(etWidth.getText().toString()),
+                            Integer.parseInt(etHeight.getText().toString()), true);
+                }
+                switch (format) {
+                    case JPG:
+                        finalBitmap[i].compress(Bitmap.CompressFormat.JPEG, 100, out);
+                        break;
+                    case PNG:
+                        finalBitmap[i].compress(Bitmap.CompressFormat.PNG, 90, out);
+                        break;
+                }
                 out.flush();
                 out.getFD().sync();
                 out.close();
@@ -298,6 +377,14 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                     }
                 });
 
+    }
+
+    private boolean customRes() {
+        if (etWidth.getText().toString().matches("") && etWidth.getText().toString().matches("")) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     public void showAlert(Uri uri, final String path) {
@@ -343,11 +430,12 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        TranslateAnimation moveLefttoRight = new TranslateAnimation(0, -((width / 2) - 150), 0, 0);
-        moveLefttoRight.setDuration(700);
-        moveLefttoRight.setFillAfter(true);
-        ivSelectPdf.startAnimation(moveLefttoRight);
+
         if (requestCode == 777 && resultCode == Activity.RESULT_OK) {
+            TranslateAnimation moveLefttoRight = new TranslateAnimation(0, -((width / 2) - 150), 0, 0);
+            moveLefttoRight.setDuration(700);
+            moveLefttoRight.setFillAfter(true);
+            ivSelectPdf.startAnimation(moveLefttoRight);
             if (data.getBooleanExtra(FilePickerActivity.EXTRA_ALLOW_MULTIPLE, false)) {
                 // For JellyBean and above
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
@@ -477,10 +565,16 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                     response = client.newCall(request).execute();
                     jsonStr = response.body().string();
 
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     e.printStackTrace();
                     er = true;
                     Log.e("Error", e.toString());
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(getActivity(), e.toString(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 }
 
                 if (jsonStr != null) {
@@ -511,18 +605,36 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                                 Log.e("Heigth:Width", imagedata[i].getHeight() + ":" + imagedata[i].getWidth());
                             }
                         }
-                    } catch (JSONException e) {
+                    } catch (final JSONException e) {
                         Log.e("Error", e.toString());
                         er = true;
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(getActivity(), e.toString(), Toast.LENGTH_SHORT).show();
+                            }
+                        });
                     }
                 } else {
                     Log.e("Error", "Server error");
                     er = true;
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(getActivity(), "Server error", Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 }
 
             } else {
                 er = true;
                 Log.e("Error", "File = null");
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getActivity(), "Invalid File", Toast.LENGTH_SHORT).show();
+                    }
+                });
             }
             return null;
         }

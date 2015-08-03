@@ -17,9 +17,9 @@
             android:id="@+id/etPath"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignLeft="@+id/ivSelectPdf"
-            android:layout_centerVertical="true"
+            android:layout_centerInParent="true"
             android:layout_gravity="center"
+            android:layout_marginLeft="50dp"
             android:editable="false"
             android:textColor="@color/primary_dark"
             android:visibility="invisible" />
@@ -43,7 +43,9 @@
             xmlns:card_view="http://schemas.android.com/apk/res-auto"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="40"
+            android:layout_marginLeft="5dp"
+            android:layout_marginRight="5dp"
+            android:layout_weight="45"
             android:alpha="0.9"
             android:elevation="2dp"
             card_view:cardBackgroundColor="@android:color/white"
@@ -53,6 +55,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingLeft="5dp">
 
@@ -82,7 +85,9 @@
             xmlns:card_view="http://schemas.android.com/apk/res-auto"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="30"
+            android:layout_marginLeft="5dp"
+            android:layout_marginRight="5dp"
+            android:layout_weight="40"
             android:alpha="0.9"
             android:elevation="2dp"
             card_view:cardBackgroundColor="@android:color/white"
@@ -92,6 +97,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:gravity="center_vertical"
                 android:orientation="vertical"
                 android:paddingLeft="5dp">
 
@@ -121,13 +127,8 @@
                         android:id="@+id/radioButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="PNG" />
+                        android:text="PNG (Better Quality, Smaller Size)" />
 
-                    <RadioButton
-                        android:id="@+id/radioButton2"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="BMP" />
                 </RadioGroup>
 
             </LinearLayout>
@@ -137,7 +138,9 @@
             xmlns:card_view="http://schemas.android.com/apk/res-auto"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="30"
+            android:layout_marginLeft="5dp"
+            android:layout_marginRight="5dp"
+            android:layout_weight="35"
             android:alpha="0.9"
             android:elevation="2dp"
             card_view:cardBackgroundColor="@android:color/white"
@@ -147,6 +150,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:gravity="center_vertical"
                 android:orientation="vertical"
                 android:paddingLeft="5dp">
 
@@ -157,7 +161,7 @@
                     android:layout_alignEnd="@+id/textView2"
                     android:layout_alignRight="@+id/textView2"
                     android:layout_below="@+id/spinner"
-                    android:text="Resolution(Optional) Pro Only : "
+                    android:text="Resolution(optional) Pro Only : "
                     android:textAppearance="?android:attr/textAppearanceMedium"
                     android:textColor="@android:color/black" />
 
