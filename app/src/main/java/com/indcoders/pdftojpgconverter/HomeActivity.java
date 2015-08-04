@@ -59,4 +59,9 @@ public class HomeActivity extends AppCompatActivity
 
     }
 
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+
+    }
 }
