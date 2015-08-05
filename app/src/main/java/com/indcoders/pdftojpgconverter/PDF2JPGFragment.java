@@ -661,5 +661,3 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         }
     }
 }
-
-
