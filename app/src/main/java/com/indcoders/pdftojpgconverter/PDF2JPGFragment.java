@@ -602,7 +602,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                                 byte[] decodedString = Base64.decode(base64str, Base64.DEFAULT);
                                 Log.e("ByteArray", decodedString.toString());
                                 imagedata[i] = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                                Log.e("Heigth:Width", imagedata[i].getHeight() + ":" + imagedata[i].getWidth());
+                                Log.e("Height:Width", imagedata[i].getHeight() + ":" + imagedata[i].getWidth());
                             }
                         }
                     } catch (final JSONException e) {
