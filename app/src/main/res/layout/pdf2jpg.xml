@@ -20,6 +20,7 @@
             android:layout_centerInParent="true"
             android:layout_gravity="center"
             android:layout_marginLeft="50dp"
+            android:layout_toRightOf="@+id/ivSelectPdf"
             android:editable="false"
             android:textColor="@color/primary_dark"
             android:visibility="invisible" />
