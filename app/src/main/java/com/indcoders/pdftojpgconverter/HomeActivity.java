@@ -7,14 +7,17 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 public class HomeActivity extends AppCompatActivity
-        implements PDF2JPGFragment.OnFragmentInteractionListener {
+        implements PDF2JPGFragment.OnFragmentInteractionListener, HistoryFragment.OnFragmentInteractionListener {
 
     /**
      * Fragment managing the behaviors, interactions and presentation of the navigation drawer.
      */
     Toolbar bar;
+    int convert = 1, history = 2, active = convert;
+    MenuItem item;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -23,6 +26,7 @@ public class HomeActivity extends AppCompatActivity
 
         bar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(bar);
+        item = (MenuItem) findViewById(R.id.action_example);
         FragmentManager fragmentManager = getSupportFragmentManager();
         fragmentManager.beginTransaction()
                 .replace(R.id.container, PDF2JPGFragment.newInstance(null, null))
@@ -48,8 +52,32 @@ public class HomeActivity extends AppCompatActivity
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            Toast.makeText(this, "In Progress..", Toast.LENGTH_SHORT).show();
+
             return true;
         }
+        if (id == R.id.action_example) {
+            Toast.makeText(this, "In Progress..", Toast.LENGTH_SHORT).show();
+
+
+            if (active == convert) {
+                FragmentManager fragmentManager = getSupportFragmentManager();
+                fragmentManager.beginTransaction()
+                        .replace(R.id.container, HistoryFragment.newInstance(null, null))
+                        .commit();
+                item.setTitle("Converter");
+                active = history;
+            } else {
+                FragmentManager fragmentManager = getSupportFragmentManager();
+                fragmentManager.beginTransaction()
+                        .replace(R.id.container, PDF2JPGFragment.newInstance(null, null))
+                        .commit();
+                item.setTitle("History");
+                active = convert;
+            }
+            return true;
+        }
+
 
         return super.onOptionsItemSelected(item);
     }

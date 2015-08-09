@@ -18,6 +18,7 @@
         <item name="android:textColorPrimaryInverse">@color/grey_black_1000</item>
         <item name="android:actionMenuTextColor">@color/grey_white_1000</item>
         <item name="android:textColorSecondary">@color/grey_white_1000</item>
+        <item name="android:textColor">@color/grey_white_1000</item>
 
         <item name="homeAsUpIndicator">@drawable/ic_drawer</item>
         <item name="android:homeAsUpIndicator">@drawable/ic_drawer</item>
@@ -27,6 +28,7 @@
         <item name="colorControlHighlight">@color/accent</item>
 
     </style>
+
 
     <style name="MyPopupStyle" parent="ThemeOverlay.AppCompat.Light">
         <item name="android:colorBackground">@color/grey_white_1000</item>

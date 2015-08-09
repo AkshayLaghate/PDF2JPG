@@ -1,6 +1,6 @@
 package com.indcoders.pdftojpgconverter;
 
-import android.annotation.TargetApi;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -10,6 +10,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Point;
 import android.media.MediaScannerConnection;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -22,11 +23,12 @@ import android.support.v4.app.Fragment;
 import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
 import android.util.Base64;
-import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.animation.TranslateAnimation;
 import android.widget.Button;
 import android.widget.EditText;
@@ -80,10 +82,12 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
     int height, width;
     RadioGroup rbGroup;
     int format = JPG;
+    ArrayList<String> dbNames, dbPaths, dbPages, dbFormats;
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
     private OnFragmentInteractionListener mListener;
+    private TinyDB tiny;
 
     public PDF2JPGFragment() {
         // Required empty public constructor
@@ -175,13 +179,23 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         ivSelectPdf.setOnClickListener(this);
         bConvert.setOnClickListener(this);
 
+        tiny = new TinyDB(getActivity());
 
         pd = new ProgressDialog(getActivity());
 
-        DisplayMetrics displaymetrics = new DisplayMetrics();
-        getActivity().getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-        height = displaymetrics.heightPixels;
-        width = displaymetrics.widthPixels;
+        dbNames = new ArrayList<>();
+        dbPaths = new ArrayList<>();
+        dbPages = new ArrayList<>();
+        dbFormats = new ArrayList<>();
+
+
+        WindowManager wm = (WindowManager) getActivity().getSystemService(Context.WINDOW_SERVICE);
+
+        Display display = wm.getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+        width = size.x;
+        height = size.y;
 
         return v;
     }
@@ -384,7 +398,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         if (last) {
             MediaScannerConnection.scanFile(getActivity(), new String[]{file.toString()}, null,
                     new MediaScannerConnection.OnScanCompletedListener() {
-                        public void onScanCompleted(String path, Uri uri) {
+                        public void onScanCompleted(final String path, Uri uri) {
                             Log.i("ExternalStorage", "Scanned " + path + ":");
                             Log.i("ExternalStorage", "-> uri=" + uri);
                             showUri = uri;
@@ -393,6 +407,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                                 @Override
                                 public void run() {
                                     showAlert(showUri, showPath, num);
+                                    saveToDB(path, num);
                                 }
                             });
                         }
@@ -443,18 +458,39 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         etFilename.setText("");
         etpath.setText("");
         etpath.setVisibility(View.INVISIBLE);
-        TranslateAnimation moveLefttoRight = new TranslateAnimation(-((width / 2) - 150), 0, 0, 0);
+        TranslateAnimation moveLefttoRight = new TranslateAnimation(-((width / 2) - (ivSelectPdf.getWidth() / 2)), 0, 0, 0);
         moveLefttoRight.setDuration(500);
         moveLefttoRight.setFillAfter(true);
         ivSelectPdf.startAnimation(moveLefttoRight);
     }
 
-    @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+    private void saveToDB(String path, int pages) {
+
+        dbNames = tiny.getListString("names");
+        dbPaths = tiny.getListString("paths");
+        dbPages = tiny.getListString("pages");
+        dbFormats = tiny.getListString("formats");
+
+        dbNames.add(etFilename.getText().toString());
+        dbPaths.add(path);
+        dbPages.add(String.valueOf(pages + 1));
+        if (format == JPG) {
+            dbFormats.add("JPG");
+        } else {
+            dbFormats.add("PNG");
+        }
+
+        tiny.putListString("names", dbNames);
+        tiny.putListString("paths", dbPaths);
+        tiny.putListString("pages", dbPages);
+        tiny.putListString("formats", dbFormats);
+    }
+
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
 
         if (requestCode == 777 && resultCode == Activity.RESULT_OK) {
-            TranslateAnimation moveLefttoRight = new TranslateAnimation(0, -((width / 2) - 150), 0, 0);
+            TranslateAnimation moveLefttoRight = new TranslateAnimation(0, -((width / 2) - (ivSelectPdf.getWidth() / 2)), 0, 0);
             moveLefttoRight.setDuration(700);
             moveLefttoRight.setFillAfter(true);
             ivSelectPdf.startAnimation(moveLefttoRight);
@@ -608,12 +644,6 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                     });
                     try {
                         final JSONArray obj = new JSONArray(jsonStr);
-                        getActivity().runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                Toast.makeText(getActivity(), "Total Pages : " + obj.length(), Toast.LENGTH_SHORT).show();
-                            }
-                        });
                         if (obj.length() > 0) {
 
                             for (int i = 0; i < obj.length(); i++) {
@@ -638,9 +668,10 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                         getActivity().runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(getActivity(), e.toString(), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getActivity(), "Not a valid PDF file !!", Toast.LENGTH_SHORT).show();
                             }
                         });
+
                     }
                 } else {
                     Log.e("Error", "Server error");
@@ -680,8 +711,8 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
             pd.dismiss();
-            if (!er) {
-
+            if (er) {
+                reset();
             }
         }
     }
