@@ -5,11 +5,14 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.ClipData;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaScannerConnection;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -217,12 +220,14 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
 
             case R.id.bConvert:
 
-                if (Build.VERSION.SDK_INT >= 21) {
-                    // create a new renderer
-                    // pdfRenderer(file);
-                }
+
                 if (allGood()) {
-                    new ConvertFile().execute(file);
+                    if (isNetworkOnline()) {
+                        new ConvertFile().execute(file);
+                    } else {
+                        Toast.makeText(getActivity().getApplicationContext(), "Check Network Connection and try again!",
+                                Toast.LENGTH_SHORT).show();
+                    }
                 }
                 break;
 
@@ -232,6 +237,26 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                 break;
 
         }
+    }
+
+    public boolean isNetworkOnline() {
+        boolean status = false;
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getActivity().getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo netInfo = cm.getNetworkInfo(0);
+            if (netInfo != null && netInfo.getState() == NetworkInfo.State.CONNECTED) {
+                status = true;
+            } else {
+                netInfo = cm.getNetworkInfo(1);
+                if (netInfo != null && netInfo.getState() == NetworkInfo.State.CONNECTED)
+                    status = true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return status;
+
     }
 
     private boolean allGood() {
@@ -296,7 +321,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         startActivityForResult(i, 777);
     }
 
-    private void saveImageToExternalStorage(Bitmap finalBitmap, boolean last, int num) {
+    private void saveImageToExternalStorage(Bitmap finalBitmap, boolean last, final int num) {
         String root = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).toString();
         File myDir = new File(root + "/PDF2JPG");
         myDir.mkdirs();
@@ -367,7 +392,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                             getActivity().runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    showAlert(showUri, showPath);
+                                    showAlert(showUri, showPath, num);
                                 }
                             });
                         }
@@ -384,11 +409,11 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         }
     }
 
-    public void showAlert(Uri uri, final String path) {
+    public void showAlert(Uri uri, final String path, int pages) {
         final Uri uri1 = uri;
         new AlertDialog.Builder(getActivity())
                 .setTitle("File Saved.")
-                .setMessage("File saved in :" + path)
+                .setMessage((pages + 1) + " File(s) saved in :" + path)
                 .setPositiveButton("Open File", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         // continue with delete
@@ -600,11 +625,11 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
                                 imagedata = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
                                 Log.e("Height:Width", imagedata.getHeight() + ":" + imagedata.getWidth());
                                 if (i == obj.length() - 1) {
-                                    saveImageToExternalStorage(imagedata, true, obj.length() - i);
+                                    saveImageToExternalStorage(imagedata, true, i);
                                 } else {
-                                    saveImageToExternalStorage(imagedata, false, obj.length() - i);
+                                    saveImageToExternalStorage(imagedata, false, i);
                                 }
-
+                                imagedata.recycle();
                             }
                         }
                     } catch (final JSONException e) {
@@ -644,7 +669,7 @@ public class PDF2JPGFragment extends Fragment implements View.OnClickListener {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            pd.setMessage("Converting file...");
+            pd.setMessage("Converting File(s) ...");
             pd.setCancelable(true);
             pd.setIndeterminate(false);
             pd.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);

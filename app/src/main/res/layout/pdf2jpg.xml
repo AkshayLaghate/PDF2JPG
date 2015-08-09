@@ -15,12 +15,11 @@
 
         <EditText
             android:id="@+id/etPath"
-            android:layout_width="wrap_content"
+            android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:layout_centerInParent="true"
+            android:layout_centerVertical="true"
             android:layout_gravity="center"
-            android:layout_marginLeft="50dp"
-            android:layout_toRightOf="@+id/ivSelectPdf"
+            android:layout_marginLeft="110dp"
             android:editable="false"
             android:textColor="@color/primary_dark"
             android:visibility="invisible" />
