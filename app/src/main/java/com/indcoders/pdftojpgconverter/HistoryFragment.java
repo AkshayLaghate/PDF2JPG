@@ -2,15 +2,19 @@ package com.indcoders.pdftojpgconverter;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+
+import java.io.File;
 
 
 /**
@@ -74,6 +78,17 @@ public class HistoryFragment extends Fragment {
         lvHistory = (ListView) v.findViewById(R.id.lvHistory);
         lvHistory.setAdapter(new CrapAdapter());
 
+        lvHistory.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+                File imagefile = new File(tiny.getListString("paths").get(position));
+                Intent i = new Intent();
+                i.setAction(Intent.ACTION_VIEW);
+                i.setDataAndType(Uri.fromFile(imagefile), "image/jpg");
+                startActivity(i);
+            }
+        });
 
         return v;
     }

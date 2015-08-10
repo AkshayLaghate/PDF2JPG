@@ -57,7 +57,6 @@ public class HomeActivity extends AppCompatActivity
             return true;
         }
         if (id == R.id.action_example) {
-            Toast.makeText(this, "In Progress..", Toast.LENGTH_SHORT).show();
 
 
             if (active == convert) {
